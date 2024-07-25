@@ -203,7 +203,7 @@ static void Mod_FreeSpriteData(model_t *model)
 			}
 			else
 			{
-				spritegroup = sprite->frames[i].frameptr;
+				spritegroup = (mspritegroup_t *)sprite->frames[i].frameptr;
 
 				for(j=0;j<spritegroup->numframes;j++)
 					free(spritegroup->frames[j]);

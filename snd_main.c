@@ -87,20 +87,20 @@ struct SoundDriver
 };
 
 SoundCvarInitFunc AHI_CvarInit;
-SoundCvarInitFunc ALSA_CvarInit;
+extern SoundCvarInitFunc ALSA_CvarInit;
 SoundCvarInitFunc CoreAudio_CvarInit;
 SoundCvarInitFunc DS7_CvarInit;
-SoundCvarInitFunc OSS_CvarInit;
-SoundCvarInitFunc PulseAudio_CvarInit;
+extern SoundCvarInitFunc OSS_CvarInit;
+extern SoundCvarInitFunc PulseAudio_CvarInit;
 SoundCvarInitFunc SNDIO_CvarInit;
 SoundCvarInitFunc WaveOut_CvarInit;
 
 SoundInitFunc AHI_Init;
-SoundInitFunc ALSA_Init;
+extern SoundInitFunc ALSA_Init;
 SoundInitFunc CoreAudio_Init;
 SoundInitFunc DS7_Init;
-SoundInitFunc OSS_Init;
-SoundInitFunc PulseAudio_Init;
+extern SoundInitFunc OSS_Init;
+extern SoundInitFunc PulseAudio_Init;
 SoundInitFunc SNDIO_Init;
 SoundInitFunc WaveOut_Init;
 

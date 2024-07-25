@@ -2149,7 +2149,7 @@ static void M_SinglePlayer_Draw()
 	M_PrintWhite (88, 13*8, "Internet play only");
 }
 
-static void M_SinglePlayer_Key(key)
+static void M_SinglePlayer_Key(int key)
 {
 	switch (key)
 	{
