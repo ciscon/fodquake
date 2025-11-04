@@ -1,14 +1,17 @@
 
 VPATH=../../../
 
-CC=gcc
+#CC=gcc
 STRIP=strip
 AR=ar
 
-CFLAGS=-Wno-error -O2 -g -fno-strict-aliasing -DCLIENTONLY -DNETQW -I../thirdparty/include -L../thirdparty/lib $(OSCFLAGS) $(CPUCFLAGS) $(RENDERERCFLAGS)
+CFLAGS=-O2 -fcommon -g -Wall -fno-strict-aliasing -DCLIENTONLY -DNETQW -I../thirdparty/include -L../thirdparty/lib $(OSCFLAGS) $(CPUCFLAGS) $(RENDERERCFLAGS) -Wno-error -std=gnu17
 STRIPFLAGS=--strip-unneeded --remove-section=.comment
 
 TARGETSYSTEM:=$(shell $(CC) -dumpmachine | sed "s/^mingw32$$/i586-mingw32msvc/")
+
+
+-include .config_windows
 
 OS=$(shell echo $(TARGETSYSTEM) | sed "s/-linux-.*/-linux/" | sed "s/-gnu//" | sed "s/.*-//" | tr [A-Z] [a-z] | sed s/^mingw.*/win32/ | sed s/^openbsd.*/openbsd/ | sed s/^freebsd.*/freebsd/ | sed s/^darwin.*/macosx/)
 CPU=$(shell echo $(TARGETSYSTEM) | cut -d '-' -f 1 | tr [A-Z] [a-z] | sed "s/powerpc/ppc/")
@@ -71,10 +74,10 @@ ifeq ($(OS), linux)
 	OSLDFLAGS=-lpthread -lrt -ldl
 
 	OSSWOBJS=vid_x11.o vid_mode_x11.o vid_mode_xf86vm.o vid_mode_xrandr.o in_x11.o
-	OSSWLDFLAGS=-L/usr/X11R6/lib -lX11 -lXext -lXxf86dga
+	OSSWLDFLAGS=-L/usr/X11R6/lib -lX11 -lXext
 
 	OSGLOBJS=vid_glx.o vid_mode_x11.o vid_mode_xf86vm.o vid_mode_xrandr.o in_x11.o
-	OSGLLDFLAGS=-L/usr/X11R6/lib -lX11 -lXext -lXxf86dga -lGL
+	OSGLLDFLAGS=-L/usr/X11R6/lib -lX11 -lXext -lGL
 endif
 
 ifeq ($(OS), freebsd)
@@ -92,10 +95,10 @@ ifeq ($(OS), freebsd)
 	OSLDFLAGS=-lpthread
 
 	OSSWOBJS=vid_x11.o vid_mode_x11.o vid_mode_xf86vm.o vid_mode_xrandr.o in_x11.o
-	OSSWLDFLAGS=-L/usr/local/lib -lX11 -lXext -lXxf86dga
+	OSSWLDFLAGS=-L/usr/local/lib -lX11 -lXext
 
 	OSGLOBJS=vid_glx.o vid_mode_x11.o vid_mode_xf86vm.o vid_mode_xrandr.o in_x11.o
-	OSGLLDFLAGS=-L/usr/local/lib -lX11 -lXext -lXxf86dga -lGL
+	OSGLLDFLAGS=-L/usr/local/lib -lX11 -lXext -lGL
 endif
 
 ifeq ($(OS), netbsd)
@@ -108,10 +111,10 @@ ifeq ($(OS), netbsd)
 	OSLDFLAGS=-lossaudio
 
 	OSSWOBJS=vid_x11.o vid_mode_x11.o vid_mode_xf86vm.o vid_mode_xrandr.o in_x11.o
-	OSSWLDFLAGS=-L/usr/X11R6/lib -lX11 -lXext -lXxf86dga
+	OSSWLDFLAGS=-L/usr/X11R6/lib -lX11 -lXext
 
 	OSGLOBJS=vid_glx.o vid_mode_x11.o vid_mode_xf86vm.o vid_mode_xrandr.o in_x11.o
-	OSGLLDFLAGS=-L/usr/X11R6/lib -lX11 -lXext -lXxf86dga -lGL
+	OSGLLDFLAGS=-L/usr/X11R6/lib -lX11 -lXext -lGL
 endif
 
 ifeq ($(OS), openbsd)
@@ -129,10 +132,10 @@ ifeq ($(OS), openbsd)
 	OSLDFLAGS=-lpthread
 
 	OSSWOBJS=vid_x11.o vid_mode_x11.o vid_mode_xf86vm.o vid_mode_xrandr.o in_x11.o
-	OSSWLDFLAGS=-L/usr/X11R6/lib -lX11 -lXext -lXxf86dga
+	OSSWLDFLAGS=-L/usr/X11R6/lib -lX11 -lXext
 
 	OSGLOBJS=vid_glx.o vid_mode_x11.o vid_mode_xf86vm.o vid_mode_xrandr.o in_x11.o
-	OSGLLDFLAGS=-L/usr/X11R6/lib -lX11 -lXext -lXxf86dga -lGL
+	OSGLLDFLAGS=-L/usr/X11R6/lib -lX11 -lXext -lGL
 endif
 
 ifeq ($(OS), cygwin)

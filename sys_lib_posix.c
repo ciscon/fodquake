@@ -38,6 +38,7 @@ struct
 	{ "png15", "libpng15.so" },
 	{ "z", "libz.so.1" },
 	{ "jpeg", "libjpeg.so.62" },
+	{ "Xxf86dga", "libXxf86dga.so.1" },
 	{ "Xxf86vm", "libXxf86vm.so.1" },
 	{ "Xrandr", "libXrandr.so.2" },
 };

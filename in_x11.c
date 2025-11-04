@@ -25,7 +25,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
-#include <X11/extensions/xf86dga.h>
 #include <X11/extensions/XInput.h>
 
 #include <dlfcn.h>
@@ -34,8 +33,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "input.h"
 #include "keys.h"
 
+#include "sys_lib.h"
 #include "sys_thread.h"
 #include "in_x11.h"
+
+#define XF86DGADirectPresent 1
+#define XF86DGADirectMouse 4
 
 #define XINPUTFLAGS (KeyPressMask|KeyReleaseMask|PointerMotionMask|ButtonPressMask|ButtonReleaseMask)
 
@@ -86,6 +89,10 @@ struct inputdata
 	int dga_mouse_enabled;
 	int mouse_grabbed;
 
+	struct SysLib *libXxf86dga;
+	Status (*__XF86DGAQueryDirectVideo)(Display *, int, int *);
+	Status (*__XF86DGADirectVideo)(Display *, int, int);
+
 	void *libxi;
 	XDevice *(*__XOpenDevice)(Display *display, XID device_id);
 	void (*__XCloseDevice)(Display *display, XDevice *device);
@@ -97,6 +104,40 @@ struct inputdata
 
 	struct xpropertyrestore *xpropertyrestore;
 };
+
+static void close_libXxf86dga(struct inputdata *id)
+{
+	if (id->libXxf86dga)
+	{
+		Sys_Lib_Close(id->libXxf86dga);
+	}
+
+	id->libXxf86dga = 0;
+	id->__XF86DGAQueryDirectVideo = 0;
+	id->__XF86DGADirectVideo = 0;
+}
+
+static void open_libXxf86dga(struct inputdata *id)
+{
+	id->libXxf86dga = Sys_Lib_Open("Xxf86dga");
+	if (!id->libXxf86dga)
+	{
+		Com_Printf("Warning: Unable to load libXxf86dga, this might result in erratic mouse behaviour\n");
+	}
+	else
+	{
+		id->__XF86DGAQueryDirectVideo = Sys_Lib_GetAddressByName(id->libXxf86dga, "XF86DGAQueryDirectVideo");
+		id->__XF86DGADirectVideo = Sys_Lib_GetAddressByName(id->libXxf86dga, "XF86DGADirectVideo");
+
+		if (id->__XF86DGAQueryDirectVideo
+		 && id->__XF86DGADirectVideo)
+		{
+			return;
+		}
+
+		close_libXxf86dga(id);
+	}
+}
 
 static void open_libxi(struct inputdata *id)
 {
@@ -274,7 +315,7 @@ static void DoGrabMouse(struct inputdata *id)
 
 	XSelectInput(id->x_disp, id->x_win, XINPUTFLAGS&(~PointerMotionMask));
 
-	if (in_dga_mouse.value)
+	if (id->libXxf86dga && in_dga_mouse.value)
 	{
 		grab_win = DefaultRootWindow(id->x_disp);
 	}
@@ -287,20 +328,20 @@ static void DoGrabMouse(struct inputdata *id)
 
 	XGrabPointer(id->x_disp, grab_win, True, PointerMotionMask | ButtonPressMask | ButtonReleaseMask, GrabModeAsync, GrabModeAsync, grab_win, None, CurrentTime);
 
-	if (in_dga_mouse.value)
+	if (id->libXxf86dga && in_dga_mouse.value)
 	{
-		XF86DGAQueryDirectVideo(id->x_disp, DefaultScreen(id->x_disp), &dgaflags);
+		id->__XF86DGAQueryDirectVideo(id->x_disp, DefaultScreen(id->x_disp), &dgaflags);
 
 		if ((dgaflags&XF86DGADirectPresent))
 		{
-			if (XF86DGADirectVideo(id->x_disp, DefaultScreen(id->x_disp), XF86DGADirectMouse))
+			if (id->__XF86DGADirectVideo(id->x_disp, DefaultScreen(id->x_disp), XF86DGADirectMouse))
 			{
 				id->dga_mouse_enabled = 1;
 			}
 		}
 	}
 
-	if (id->dga_mouse_enabled)
+	if (id->libXxf86dga && id->dga_mouse_enabled)
 		XSelectInput(id->x_disp, grab_win, PointerMotionMask);
 	else
 		XSelectInput(id->x_disp, id->x_win, XINPUTFLAGS);
@@ -313,11 +354,11 @@ static void DoUngrabMouse(struct inputdata *id)
 	if (!id->mouse_grabbed)
 		return;
 
-	if (id->dga_mouse_enabled)
+	if (id->libXxf86dga && id->dga_mouse_enabled)
 	{
 		XSelectInput(id->x_disp, DefaultRootWindow(id->x_disp), 0);
 		id->dga_mouse_enabled = 0;
-		XF86DGADirectVideo(id->x_disp, DefaultScreen(id->x_disp), 0);
+		id->__XF86DGADirectVideo(id->x_disp, DefaultScreen(id->x_disp), 0);
 	}
 	XUngrabPointer(id->x_disp, CurrentTime);
 	XSelectInput(id->x_disp, id->x_win, StructureNotifyMask | KeyPressMask | KeyReleaseMask | ExposureMask | ButtonPressMask | ButtonReleaseMask);
@@ -899,7 +940,7 @@ static void GetEvents(struct inputdata *id)
 				id->keyq_head = (id->keyq_head + 1) & 63;
 				break;
 			case MotionNotify:
-				if (id->dga_mouse_enabled)
+				if (id->libXxf86dga && id->dga_mouse_enabled)
 				{
 					id->mousex+= event.xmotion.x;
 					id->mousey+= event.xmotion.y;
@@ -989,7 +1030,7 @@ static void GetEvents(struct inputdata *id)
 		}
 	}
 
-	if (!id->dga_mouse_enabled && (newmousex != id->windowwidth/2 || newmousey != id->windowheight/2) && id->grab_mouse)
+	if ((!id->libXxf86dga || !id->dga_mouse_enabled) && (newmousex != id->windowwidth/2 || newmousey != id->windowheight/2) && id->grab_mouse)
 	{
 		newmousex-= id->windowwidth/2;
 		newmousey-= id->windowheight/2;
@@ -1036,6 +1077,7 @@ void *X11_Input_Init(Window x_win, unsigned int windowwidth, unsigned int window
 			{
 				id->xpropertyrestore = 0;
 
+				open_libXxf86dga(id);
 				open_libxi(id);
 
 				if (id->libxi)
@@ -1112,6 +1154,8 @@ void X11_Input_Shutdown(void *inputdata)
 
 	if (id->libxi)
 		dlclose(id->libxi);
+
+	close_libXxf86dga(id);
 
 	Sys_Thread_DeleteMutex(id->mutex);
 
